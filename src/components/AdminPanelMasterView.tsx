@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { Group, Plan, Member, Payment } from '../types/index.ts';
 import { useLanguage } from '../context/LanguageContext.tsx';
+import { ADMIN_EMAILS } from '../utils/admin.ts';
 
 interface AdminPanelMasterViewProps {
   groups: Group[];
@@ -1532,6 +1533,44 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
               <p className="text-[11px] text-zinc-500 mt-1">
                 Notez bien ce code pour ne pas perdre l'accès.
               </p>
+            </div>
+
+            {/* Authorized Admin Accounts list */}
+            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                    Comptes Administrateurs Autorisés ({ADMIN_EMAILS.length})
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Ces adresses email bénéficient des accès complets au tableau de bord et au panneau d'administration.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {ADMIN_EMAILS.map((adminEmail, idx) => (
+                  <div
+                    key={adminEmail}
+                    className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/60 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                        {idx + 1}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 font-mono">
+                          {adminEmail}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                      Super Admin
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">

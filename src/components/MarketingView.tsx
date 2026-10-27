@@ -90,8 +90,10 @@ export const MarketingView: React.FC<MarketingViewProps> = ({ isSandboxMode }) =
   // Team Members State
   const [teamMembers, setTeamMembers] = useState([
     { id: 'tm_1', email: 'sbireino@gmail.com', name: 'Sbireino (Propriétaire)', role: 'superadmin' },
-    { id: 'tm_2', email: 'assistant.accra@wtm.local', name: 'Assistant Modérateur', role: 'moderator' },
-    { id: 'tm_3', email: 'support.ghana@wtm.local', name: 'Agent Support Client', role: 'support' }
+    { id: 'tm_2', email: 'jibriltengeh@gmail.com', name: 'Jibril Tengeh (Admin)', role: 'superadmin' },
+    { id: 'tm_3', email: 'jibriltengeh4@gmail.com', name: 'Jibril Tengeh 4 (Admin)', role: 'superadmin' },
+    { id: 'tm_4', email: 'assistant.accra@wtm.local', name: 'Assistant Modérateur', role: 'moderator' },
+    { id: 'tm_5', email: 'support.ghana@wtm.local', name: 'Agent Support Client', role: 'support' }
   ]);
 
   // Form states

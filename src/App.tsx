@@ -47,6 +47,7 @@ import { MarketingView } from './components/MarketingView.tsx';
 import { AccessLandingView } from './components/AccessLandingView.tsx';
 import { AdminPanelMasterView } from './components/AdminPanelMasterView.tsx';
 import { useLanguage } from './context/LanguageContext.tsx';
+import { isUserAdmin } from './utils/admin.ts';
 import { 
   ShieldCheck, 
   LogIn, 
@@ -563,21 +564,39 @@ export default function App() {
             )}
 
             {currentTab === 'admin' && (
-              <AdminPanelMasterView
-                groups={groups}
-                plans={plans}
-                members={members}
-                payments={payments}
-                isSandboxMode={true}
-                onRefreshData={() => {
-                  fetch('/api/admin/config')
-                    .then(r => r.json())
-                    .then(d => {
-                      if (d.success && d.settings) setAdminSettings(d.settings);
-                    })
-                    .catch(() => {});
-                }}
-              />
+              isUserAdmin(currentUser?.email) ? (
+                <AdminPanelMasterView
+                  groups={groups}
+                  plans={plans}
+                  members={members}
+                  payments={payments}
+                  isSandboxMode={true}
+                  onRefreshData={() => {
+                    fetch('/api/admin/config')
+                      .then(r => r.json())
+                      .then(d => {
+                        if (d.success && d.settings) setAdminSettings(d.settings);
+                      })
+                      .catch(() => {});
+                  }}
+                />
+              ) : (
+                <div className="max-w-md mx-auto py-16 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mx-auto shadow-md">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Accès Administrateur Restreint</h2>
+                  <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                    Seuls les administrateurs autorisés peuvent accéder aux réglages généraux.
+                  </p>
+                  <button
+                    onClick={() => setCurrentTab('dashboard')}
+                    className="px-4 py-2 text-xs font-bold bg-emerald-600 text-white rounded-xl shadow-md hover:bg-emerald-500 transition-colors"
+                  >
+                    Retour au tableau de bord
+                  </button>
+                </div>
+              )
             )}
           </>
         )}
@@ -586,7 +605,7 @@ export default function App() {
       {/* Fixed Bottom Navigation Header with Section Icons */}
       <BottomNav
         currentTab={currentTab}
-        isAdmin={currentUser?.email === 'sbireino@gmail.com'}
+        isAdmin={isUserAdmin(currentUser?.email)}
         onSelectTab={(tab) => {
           if (tab !== 'join') setTargetCheckoutGroupId(undefined);
           setCurrentTab(tab);

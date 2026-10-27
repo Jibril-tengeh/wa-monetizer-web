@@ -438,7 +438,9 @@ const teamRegistry: Array<{
   createdAt: string;
 }> = [
   { id: 'tm_1', email: 'sbireino@gmail.com', name: 'Sbireino (Propriétaire)', role: 'superadmin', createdAt: new Date().toISOString() },
-  { id: 'tm_2', email: 'assistant.accra@wtm.local', name: 'Assistant Modérateur', role: 'moderator', createdAt: new Date().toISOString() }
+  { id: 'tm_2', email: 'jibriltengeh@gmail.com', name: 'Jibril Tengeh (Admin)', role: 'superadmin', createdAt: new Date().toISOString() },
+  { id: 'tm_3', email: 'jibriltengeh4@gmail.com', name: 'Jibril Tengeh 4 (Admin)', role: 'superadmin', createdAt: new Date().toISOString() },
+  { id: 'tm_4', email: 'assistant.accra@wtm.local', name: 'Assistant Modérateur', role: 'moderator', createdAt: new Date().toISOString() }
 ];
 
 // 6. Validate Promo Code Endpoint

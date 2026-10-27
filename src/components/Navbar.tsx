@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { useLanguage } from '../context/LanguageContext.tsx';
+import { isUserAdmin } from '../utils/admin.ts';
 
 export type ActiveTab = 'dashboard' | 'groups' | 'plans' | 'members' | 'payments' | 'wapay' | 'marketing' | 'settings' | 'audit' | 'join' | 'admin';
 
@@ -135,8 +136,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Smartphone className="w-5 h-5" />
             </button>
 
-            {/* Master Admin Panel Button - Only visible when the admin (sbireino@gmail.com) is connected and not on public portal */}
-            {currentUser?.email === 'sbireino@gmail.com' && currentTab !== 'join' && (
+            {/* Master Admin Panel Button - Only visible when an authorized admin is connected and not on public portal */}
+            {isUserAdmin(currentUser?.email) && currentTab !== 'join' && (
               <button
                 onClick={() => onSelectTab('admin')}
                 title="Panneau d'Administration Général (Réglages)"

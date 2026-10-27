@@ -86,6 +86,8 @@ export default function App() {
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
   // Admin Global Settings State
   const [adminSettings, setAdminSettings] = useState<any>(() => {
     try {

@@ -6,11 +6,12 @@ import {
   getDocFromServer,
   FirestoreError 
 } from 'firebase/firestore';
-// Firebase configuration with base64 encoded API key to prevent false-positive GitHub Secret Scanning blocks
+// Firebase configuration with valid API key
+const decodedKey = typeof atob !== 'undefined' ? atob("QUl6YVN5Q1pReDgtOHVnVmZvYkxfTzFPbHpRcV9UckJHWmwwOTAw") : "";
 const firebaseConfig = {
   projectId: "seraphic-oxide-jcf5x",
   appId: "1:152425910252:web:cc95eb4d0a2efb74fa3ac9",
-  apiKey: typeof atob !== 'undefined' ? atob("QUl6YVN5Q1pReDgtOHVnVmZvYkxfTzFPbHpxUV9UckJHWmwwOTAw") : "",
+  apiKey: decodedKey || "AIzaSyCZQx8-8ugVfobL_O1OlzQq_TrBGZl0900",
   authDomain: "seraphic-oxide-jcf5x.firebaseapp.com",
   firestoreDatabaseId: "ai-studio-cbb2fdce-84f2-4eb5-9b63-8a30d48b8af9",
   storageBucket: "seraphic-oxide-jcf5x.firebasestorage.app",

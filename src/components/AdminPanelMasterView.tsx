@@ -27,7 +27,13 @@ import {
   FileText,
   KeyRound,
   Download,
-  Upload
+  Upload,
+  Plus,
+  Trash2,
+  Building2,
+  Coins,
+  Wallet,
+  X
 } from 'lucide-react';
 import { Group, Plan, Member, Payment } from '../types/index.ts';
 import { useLanguage } from '../context/LanguageContext.tsx';
@@ -39,6 +45,17 @@ interface AdminPanelMasterViewProps {
   payments: Payment[];
   isSandboxMode: boolean;
   onRefreshData?: () => void;
+}
+
+export interface CustomPaymentMethod {
+  id: string;
+  name: string;
+  category: 'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet' | 'other';
+  countries: string;
+  feePercent: number;
+  instructions: string;
+  enabled: boolean;
+  providerType?: 'paystack' | 'hubtel' | 'manual' | 'direct';
 }
 
 export interface AdminSettingsData {
@@ -66,8 +83,62 @@ export interface AdminSettingsData {
   reminderJ1Template: string;
   adminPin: string;
   requirePinForAdmin: boolean;
+  paymentMethods: CustomPaymentMethod[];
   updatedAt: string;
 }
+
+const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
+  {
+    id: 'pm_paystack_momo',
+    name: 'MTN & Telecel Mobile Money',
+    category: 'mobile_money',
+    countries: 'Ghana, Côte d\'Ivoire, Bénin',
+    feePercent: 1.5,
+    instructions: 'Passerelle automatique Mobile Money (MTN, Telecel, AirtelTigo)',
+    enabled: true,
+    providerType: 'paystack'
+  },
+  {
+    id: 'pm_cards',
+    name: 'Cartes Bancaires Visa & Mastercard',
+    category: 'card',
+    countries: 'International (Tous pays)',
+    feePercent: 2.5,
+    instructions: 'Paiement carte bancaire sécurisé 3D-Secure',
+    enabled: true,
+    providerType: 'paystack'
+  },
+  {
+    id: 'pm_wave_cfa',
+    name: 'Wave Mobile Money',
+    category: 'mobile_money',
+    countries: 'Côte d\'Ivoire, Sénégal',
+    feePercent: 1.0,
+    instructions: 'Paiement direct Wave (QR Code et numéro)',
+    enabled: true,
+    providerType: 'direct'
+  },
+  {
+    id: 'pm_orange_money',
+    name: 'Orange Money Afrique',
+    category: 'mobile_money',
+    countries: 'Côte d\'Ivoire, Cameroun, Mali, Sénégal, Burkina',
+    feePercent: 1.5,
+    instructions: 'Transfert direct Orange Money avec validation automatique',
+    enabled: true,
+    providerType: 'direct'
+  },
+  {
+    id: 'pm_bank_transfer',
+    name: 'Virement Bancaire (RIB / Swift)',
+    category: 'bank',
+    countries: 'Zone Euro, Afrique, International',
+    feePercent: 0,
+    instructions: 'Coordonnées bancaires transmises automatiquement',
+    enabled: false,
+    providerType: 'manual'
+  }
+];
 
 const DEFAULT_SETTINGS: AdminSettingsData = {
   platformName: 'WTM - WhatsApp Monetizer',
@@ -94,6 +165,7 @@ const DEFAULT_SETTINGS: AdminSettingsData = {
   reminderJ1Template: 'URGENT : Dernier jour avant l\'expiration de votre accès WhatsApp VIP.',
   adminPin: '1234',
   requirePinForAdmin: false,
+  paymentMethods: DEFAULT_PAYMENT_METHODS,
   updatedAt: new Date().toISOString()
 };
 
@@ -112,12 +184,28 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
   const [settings, setSettings] = useState<AdminSettingsData>(() => {
     try {
       const saved = localStorage.getItem('wtm_admin_settings');
-      if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          paymentMethods: parsed.paymentMethods || DEFAULT_PAYMENT_METHODS
+        };
+      }
     } catch (e) {
       console.warn('LocalStorage admin settings read error', e);
     }
     return DEFAULT_SETTINGS;
   });
+
+  // Dynamic payment methods form states
+  const [showAddMethodModal, setShowAddMethodModal] = useState(false);
+  const [newMethodName, setNewMethodName] = useState('');
+  const [newMethodCategory, setNewMethodCategory] = useState<'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet' | 'other'>('mobile_money');
+  const [newMethodCountries, setNewMethodCountries] = useState('');
+  const [newMethodFee, setNewMethodFee] = useState('1.5');
+  const [newMethodInstructions, setNewMethodInstructions] = useState('');
+  const [methodActionSuccess, setMethodActionSuccess] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -192,6 +280,76 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
     } else {
       setPinError(true);
     }
+  };
+
+  const handleAddPaymentMethod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMethodName.trim()) return;
+
+    const newMethod: CustomPaymentMethod = {
+      id: `pm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: newMethodName.trim(),
+      category: newMethodCategory,
+      countries: newMethodCountries.trim() || 'Tous pays',
+      feePercent: Number(newMethodFee) || 0,
+      instructions: newMethodInstructions.trim() || 'Paiement direct',
+      enabled: true,
+      providerType: 'direct'
+    };
+
+    const currentMethods = settings.paymentMethods || DEFAULT_PAYMENT_METHODS;
+    const updatedMethods = [...currentMethods, newMethod];
+    const newSettings = { ...settings, paymentMethods: updatedMethods };
+
+    setSettings(newSettings);
+    localStorage.setItem('wtm_admin_settings', JSON.stringify(newSettings));
+    fetch('/api/admin/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSettings)
+    }).catch(() => {});
+
+    // Reset form
+    setNewMethodName('');
+    setNewMethodCountries('');
+    setNewMethodInstructions('');
+    setNewMethodFee('1.5');
+    setShowAddMethodModal(false);
+    setMethodActionSuccess(`Moyen de paiement "${newMethod.name}" ajouté avec succès !`);
+    setTimeout(() => setMethodActionSuccess(null), 3500);
+  };
+
+  const handleDeletePaymentMethod = (id: string, name: string) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement le moyen de paiement "${name}" ?`)) return;
+
+    const currentMethods = settings.paymentMethods || DEFAULT_PAYMENT_METHODS;
+    const updatedMethods = currentMethods.filter(m => m.id !== id);
+    const newSettings = { ...settings, paymentMethods: updatedMethods };
+
+    setSettings(newSettings);
+    localStorage.setItem('wtm_admin_settings', JSON.stringify(newSettings));
+    fetch('/api/admin/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSettings)
+    }).catch(() => {});
+
+    setMethodActionSuccess(`Moyen de paiement "${name}" supprimé.`);
+    setTimeout(() => setMethodActionSuccess(null), 3500);
+  };
+
+  const handleTogglePaymentMethod = (id: string) => {
+    const currentMethods = settings.paymentMethods || DEFAULT_PAYMENT_METHODS;
+    const updatedMethods = currentMethods.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m);
+    const newSettings = { ...settings, paymentMethods: updatedMethods };
+
+    setSettings(newSettings);
+    localStorage.setItem('wtm_admin_settings', JSON.stringify(newSettings));
+    fetch('/api/admin/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSettings)
+    }).catch(() => {});
   };
 
   // If locked by PIN
@@ -666,36 +824,254 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
               </div>
             </div>
 
-            {/* Gateways Status Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-zinc-900 dark:text-white">Paystack Multi-Devises</span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            {/* Feedback alert message for payment methods action */}
+            {methodActionSuccess && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{methodActionSuccess}</span>
+              </div>
+            )}
+
+            {/* Dynamic Custom Payment Methods Management Header */}
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h4 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-emerald-500" />
+                    <span>Moyens de Paiement Actifs ({settings.paymentMethods?.length || 0})</span>
+                  </h4>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Ajoutez vos propres canaux (Mobile Money, Cartes, Banques, Crypto) ou supprimez ceux dont vous n'avez pas besoin.
+                  </p>
                 </div>
-                <p className="text-[11px] text-zinc-500">
-                  Mobile Money (MTN, Telecel, AirtelTigo), Cartes Visa & Mastercard
-                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddMethodModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition active:scale-95 shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Ajouter un Moyen de Paiement</span>
+                </button>
               </div>
 
-              <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-zinc-900 dark:text-white">Hubtel Ghana MoMo</span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                </div>
-                <p className="text-[11px] text-zinc-500">
-                  Spécialisé Ghana : MTN MoMo, Telecel Cash, Hubtel Wallet
-                </p>
-              </div>
+              {/* Form Modal to Add New Payment Method */}
+              {showAddMethodModal && (
+                <div className="mb-6 p-5 sm:p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-800/80 border-2 border-emerald-500/40 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-700 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                      <h5 className="text-sm font-bold text-zinc-900 dark:text-white">
+                        Ajouter un Nouveau Moyen de Paiement
+                      </h5>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddMethodModal(false)}
+                      className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
 
-              <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-zinc-900 dark:text-white">Wave & Zone CFA</span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                  <form onSubmit={handleAddPaymentMethod} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          Nom du Moyen de Paiement *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newMethodName}
+                          onChange={(e) => setNewMethodName(e.target.value)}
+                          placeholder="Ex: Moov Money Bénin, Airtel Money Gabon, USDT TRC20..."
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          Catégorie *
+                        </label>
+                        <select
+                          value={newMethodCategory}
+                          onChange={(e) => setNewMethodCategory(e.target.value as any)}
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        >
+                          <option value="mobile_money">📱 Mobile Money (Orange, Wave, MTN, Moov...)</option>
+                          <option value="card">💳 Carte Bancaire (Visa, Mastercard, Débit)</option>
+                          <option value="bank">🏦 Virement Bancaire (RIB, Swift, SEPA)</option>
+                          <option value="crypto">🪙 Crypto / Portefeuille (USDT, BTC, etc.)</option>
+                          <option value="other">💼 Autre moyen de paiement</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          Pays ou Régions Couverts
+                        </label>
+                        <input
+                          type="text"
+                          value={newMethodCountries}
+                          onChange={(e) => setNewMethodCountries(e.target.value)}
+                          placeholder="Ex: Côte d'Ivoire, Bénin, Togo, International..."
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          Frais de Traitement (%)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="20"
+                          value={newMethodFee}
+                          onChange={(e) => setNewMethodFee(e.target.value)}
+                          placeholder="1.5"
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          Instructions d'Encaissement ou Coordonnées (Numéro marchand, compte, QR Code)
+                        </label>
+                        <input
+                          type="text"
+                          value={newMethodInstructions}
+                          onChange={(e) => setNewMethodInstructions(e.target.value)}
+                          placeholder="Ex: Numéro MoMo: +229 00 00 00 00 / Réf client requise"
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddMethodModal(false)}
+                        className="px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition"
+                      >
+                        Enregistrer ce Moyen de Paiement
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <p className="text-[11px] text-zinc-500">
-                  Prise en charge Côte d'Ivoire, Sénégal, Cameroun via passerelle unifiée
-                </p>
+              )}
+
+              {/* List of Custom Payment Methods */}
+              <div className="space-y-3">
+                {(!settings.paymentMethods || settings.paymentMethods.length === 0) ? (
+                  <div className="p-8 text-center rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500">
+                    <p className="text-sm font-semibold">Aucun moyen de paiement configuré pour le moment.</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddMethodModal(true)}
+                      className="mt-3 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                    >
+                      + Ajouter un Moyen de Paiement
+                    </button>
+                  </div>
+                ) : (
+                  settings.paymentMethods.map((method) => {
+                    const isMobileMoney = method.category === 'mobile_money';
+                    const isCard = method.category === 'card';
+                    const isBank = method.category === 'bank';
+                    const isCrypto = method.category === 'crypto';
+
+                    return (
+                      <div
+                        key={method.id}
+                        className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          method.enabled
+                            ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-xs'
+                            : 'bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800/60 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-start sm:items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              isMobileMoney
+                                ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400'
+                                : isCard
+                                ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400'
+                                : isBank
+                                ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400'
+                                : isCrypto
+                                ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400'
+                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                            }`}
+                          >
+                            {isMobileMoney && <Smartphone className="w-5 h-5" />}
+                            {isCard && <CreditCard className="w-5 h-5" />}
+                            {isBank && <Building2 className="w-5 h-5" />}
+                            {isCrypto && <Coins className="w-5 h-5" />}
+                            {!isMobileMoney && !isCard && !isBank && !isCrypto && <Wallet className="w-5 h-5" />}
+                          </div>
+
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-white">
+                                {method.name}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                                {method.countries || 'Tous pays'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                                Frais : {method.feePercent}%
+                              </span>
+                              {!method.enabled && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400">
+                                  Désactivé
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-500 mt-1">
+                              {method.instructions || 'Paiement direct disponible pour les clients'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Actions for this payment method */}
+                        <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                          {/* Toggle ON/OFF Switch */}
+                          <label className="relative inline-flex items-center cursor-pointer" title={method.enabled ? "Désactiver" : "Activer"}>
+                            <input
+                              type="checkbox"
+                              checked={method.enabled}
+                              onChange={() => handleTogglePaymentMethod(method.id)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-zinc-300 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                          </label>
+
+                          {/* Delete Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePaymentMethod(method.id, method.name)}
+                            className="p-2 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                            title={`Supprimer ${method.name}`}
+                            aria-label={`Supprimer ${method.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

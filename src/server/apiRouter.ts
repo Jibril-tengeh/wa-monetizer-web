@@ -684,6 +684,16 @@ export interface AdminGlobalSettings {
   reminderJ1Template: string;
   adminPin: string;
   requirePinForAdmin: boolean;
+  paymentMethods?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    countries: string;
+    feePercent: number;
+    instructions: string;
+    enabled: boolean;
+    providerType?: string;
+  }>;
   updatedAt: string;
 }
 

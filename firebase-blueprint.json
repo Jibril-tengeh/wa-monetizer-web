@@ -1,0 +1,318 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Administrator account profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 255 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["admin", "superadmin", "moderator"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "WhatsApp group managed by the administrator",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "category": { "type": "string", "maxLength": 60 },
+        "inviteLink": { "type": "string", "maxLength": 300 },
+        "accessInstructions": { "type": "string", "maxLength": 2000 },
+        "rules": { "type": "string", "maxLength": 1000 },
+        "currency": { "type": "string", "enum": ["GHS"] },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "lastLinkRotatedAt": { "type": "string" },
+        "memberCount": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["adminId", "name", "accessInstructions", "currency", "status", "createdAt"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Subscription pricing plan for a WhatsApp group",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "price": { "type": "number" },
+        "currency": { "type": "string", "enum": ["GHS"] },
+        "durationDays": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "features": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["adminId", "groupId", "name", "price", "currency", "durationDays", "isActive", "createdAt"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Subscriber profile and membership record for a WhatsApp group",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["pending", "active", "expired", "suspended", "refunded"] },
+        "currentPlanId": { "type": "string", "maxLength": 128 },
+        "currentSubscriptionId": { "type": "string", "maxLength": 128 },
+        "affiliateCode": { "type": "string", "maxLength": 50 },
+        "referredBy": { "type": "string", "maxLength": 50 },
+        "startDate": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["adminId", "groupId", "displayName", "status", "createdAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Active or historical subscription term tied to a member and group",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "memberId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "planId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["pending", "active", "expired", "suspended", "refunded"] },
+        "startDate": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "pricePaid": { "type": "number" },
+        "currency": { "type": "string", "enum": ["GHS"] },
+        "paymentId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["adminId", "memberId", "groupId", "planId", "status", "startDate", "expiresAt", "pricePaid", "currency", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment transaction record verified through server-side provider",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "memberId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "planId": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "discountApplied": { "type": "number" },
+        "promoCode": { "type": "string", "maxLength": 50 },
+        "currency": { "type": "string", "enum": ["GHS"] },
+        "provider": { "type": "string", "enum": ["paystack", "hubtel", "sandbox"] },
+        "providerReference": { "type": "string", "maxLength": 150 },
+        "idempotencyKey": { "type": "string", "maxLength": 150 },
+        "channel": { "type": "string", "enum": ["mobile_money", "card", "bank"] },
+        "momoProvider": { "type": "string", "maxLength": 50 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "customerEmail": { "type": "string", "maxLength": 150 },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "verified", "failed", "refunded"] },
+        "isSandbox": { "type": "boolean" },
+        "verifiedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["adminId", "amount", "currency", "provider", "providerReference", "status", "createdAt"]
+    },
+    "AccessToken": {
+      "title": "AccessToken",
+      "description": "Single-use one-time access token for WhatsApp group entry",
+      "type": "object",
+      "properties": {
+        "token": { "type": "string", "maxLength": 128 },
+        "adminId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "memberId": { "type": "string", "maxLength": 128 },
+        "inviteUrl": { "type": "string", "maxLength": 300 },
+        "isUsed": { "type": "boolean" },
+        "usedAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["token", "adminId", "groupId", "inviteUrl", "isUsed", "createdAt"]
+    },
+    "PromoCode": {
+      "title": "PromoCode",
+      "description": "Promotional discount codes for WhatsApp membership checkout",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 50 },
+        "discountType": { "type": "string", "enum": ["percentage", "fixed"] },
+        "discountValue": { "type": "number" },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "maxUses": { "type": "number" },
+        "usedCount": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "expiresAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["adminId", "code", "discountType", "discountValue", "isActive", "createdAt"]
+    },
+    "Referral": {
+      "title": "Referral",
+      "description": "Affiliate sponsorship record attributing members and commissions",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "affiliateCode": { "type": "string", "maxLength": 50 },
+        "referrerMemberId": { "type": "string", "maxLength": 128 },
+        "referredMemberName": { "type": "string", "maxLength": 100 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "commissionGHS": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "credited", "paid"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["adminId", "affiliateCode", "commissionGHS", "status", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security log of administrative and financial events",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 100 },
+        "entityType": { "type": "string", "maxLength": 50 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 2000 },
+        "ipAddress": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["adminId", "action", "entityType", "entityId", "createdAt"]
+    },
+    "WaPayTransaction": {
+      "title": "WaPayTransaction",
+      "description": "Financial ledger record of transactions processed via WA Pay engine",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reference": { "type": "string", "maxLength": 128 },
+        "adminId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "planId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["initiated", "pending", "processing", "verified", "failed", "cancelled", "refunded"] },
+        "providerId": { "type": "string", "maxLength": 60 },
+        "channel": { "type": "string", "maxLength": 60 },
+        "isSandbox": { "type": "boolean" },
+        "isRecurring": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "reference", "adminId", "status", "createdAt"]
+    },
+    "WaPayPayout": {
+      "title": "WaPayPayout",
+      "description": "Merchant withdrawal disbursement record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reference": { "type": "string", "maxLength": 128 },
+        "adminId": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "fee": { "type": "number" },
+        "netAmount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "cancelled"] },
+        "requestedAt": { "type": "string" }
+      },
+      "required": ["id", "reference", "adminId", "amount", "netAmount", "status", "requestedAt"]
+    },
+    "WaPayBalance": {
+      "title": "WaPayBalance",
+      "description": "Merchant available balance summary",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "currency": { "type": "string", "maxLength": 10 },
+        "availableBalanceGHS": { "type": "number" },
+        "totalWithdrawnGHS": { "type": "number" },
+        "totalNetRevenueGHS": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["adminId", "availableBalanceGHS", "totalNetRevenueGHS"]
+    },
+    "RenewalAlert": {
+      "title": "RenewalAlert",
+      "description": "WhatsApp membership expiration reminder alert record",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string", "maxLength": 128 },
+        "memberId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["drip_j3", "drip_j1", "drip_j0", "revoked"] },
+        "status": { "type": "string", "enum": ["sent", "pending", "failed"] },
+        "sentAt": { "type": "string" }
+      },
+      "required": ["adminId", "memberId", "type", "status", "sentAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores administrator and team member user profile"
+    },
+    "/groups/{groupId}": {
+      "schema": "Group",
+      "description": "WhatsApp group settings, invite details, and rules"
+    },
+    "/plans/{planId}": {
+      "schema": "Plan",
+      "description": "Subscription pricing plans for groups"
+    },
+    "/members/{memberId}": {
+      "schema": "Member",
+      "description": "Member records, expiration, affiliate code and WhatsApp status"
+    },
+    "/subscriptions/{subscriptionId}": {
+      "schema": "Subscription",
+      "description": "Individual subscription periods"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment records verified by server with promo code tracking"
+    },
+    "/accessTokens/{tokenId}": {
+      "schema": "AccessToken",
+      "description": "Single-use one-time access tokens for WhatsApp invite links"
+    },
+    "/promoCodes/{promoId}": {
+      "schema": "PromoCode",
+      "description": "Discount coupon codes for checkout"
+    },
+    "/referrals/{referralId}": {
+      "schema": "Referral",
+      "description": "Affiliation and referral logs"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Audit trails for security and financial mutations"
+    },
+    "/wapay_transactions/{txId}": {
+      "schema": "WaPayTransaction",
+      "description": "Persistent record of WA Pay transactions"
+    },
+    "/wapay_payouts/{payoutId}": {
+      "schema": "WaPayPayout",
+      "description": "Persistent record of WA Pay payouts and merchant disbursements"
+    },
+    "/wapay_balances/{adminId}": {
+      "schema": "WaPayBalance",
+      "description": "Persistent merchant ledger balances"
+    },
+    "/renewal_alerts/{alertId}": {
+      "schema": "RenewalAlert",
+      "description": "Logs of predictive WhatsApp renewal alerts"
+    }
+  }
+}

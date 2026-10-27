@@ -1,0 +1,253 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- HELPER PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn();
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'sbireino@gmail.com'
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(adminId) {
+      return isVerifiedUser() && request.auth.uid == adminId;
+    }
+
+    // --- ENTITY VALIDATION HELPERS ---
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() <= 255;
+    }
+
+    function isValidGroup(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.accessInstructions is string && data.accessInstructions.size() <= 2000 &&
+             data.currency == 'GHS' &&
+             data.status in ['active', 'archived'];
+    }
+
+    function isValidPlan(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.groupId is string && data.groupId.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.currency == 'GHS' &&
+             data.durationDays is number && data.durationDays > 0 &&
+             data.isActive is bool;
+    }
+
+    function isValidMember(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.groupId is string && data.groupId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             data.status in ['pending', 'active', 'expired', 'suspended', 'refunded'];
+    }
+
+    function isValidSubscription(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.memberId is string && data.memberId.size() <= 128 &&
+             data.groupId is string && data.groupId.size() <= 128 &&
+             data.planId is string && data.planId.size() <= 128 &&
+             data.status in ['pending', 'active', 'expired', 'suspended', 'refunded'] &&
+             data.pricePaid is number && data.pricePaid >= 0 &&
+             data.currency == 'GHS';
+    }
+
+    function isValidPayment(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.amount is number && data.amount > 0 &&
+             data.currency == 'GHS' &&
+             data.provider in ['paystack', 'hubtel', 'sandbox'] &&
+             data.providerReference is string && data.providerReference.size() <= 150 &&
+             data.status in ['pending', 'verified', 'failed', 'refunded'];
+    }
+
+    function isValidAccessToken(data) {
+      return data.token is string && data.token.size() <= 128 &&
+             data.adminId is string && data.adminId.size() <= 128 &&
+             data.groupId is string && data.groupId.size() <= 128 &&
+             data.inviteUrl is string && data.inviteUrl.size() <= 300 &&
+             data.isUsed is bool;
+    }
+
+    function isValidPromoCode(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.code is string && data.code.size() <= 50 &&
+             data.discountType in ['percentage', 'fixed'] &&
+             data.discountValue is number && data.discountValue > 0 &&
+             data.isActive is bool;
+    }
+
+    function isValidReferral(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.affiliateCode is string && data.affiliateCode.size() <= 50 &&
+             data.commissionGHS is number;
+    }
+
+    function isValidAuditLog(data) {
+      return data.adminId is string && data.adminId.size() <= 128 &&
+             data.action is string && data.action.size() <= 100 &&
+             data.entityType is string && data.entityType.size() <= 50 &&
+             data.entityId is string && data.entityId.size() <= 128;
+    }
+
+    // --- 1. USERS COLLECTION ---
+    match /users/{userId} {
+      allow get: if isVerifiedUser() && (request.auth.uid == userId || isBootstrappedAdmin());
+      allow list: if isVerifiedUser() && isBootstrappedAdmin();
+      allow create, update: if isVerifiedUser() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // --- 2. GROUPS COLLECTION ---
+    match /groups/{groupId} {
+      allow get: if true; // Public access for join/checkout page
+      allow list: if (isVerifiedUser() && resource.data.adminId == request.auth.uid) || (resource.data.status == 'active');
+      allow create: if isValidId(groupId) && isVerifiedUser() && incoming().adminId == request.auth.uid && isValidGroup(incoming());
+      allow update: if isValidId(groupId) && isVerifiedUser() && existing().adminId == request.auth.uid && incoming().adminId == existing().adminId && isValidGroup(incoming());
+      allow delete: if isValidId(groupId) && isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+
+    // --- 3. PLANS COLLECTION ---
+    match /plans/{planId} {
+      allow get, list: if true; // Public access to plans on join/checkout page
+      allow create: if isValidId(planId) && isVerifiedUser() && incoming().adminId == request.auth.uid && isValidPlan(incoming());
+      allow update: if isValidId(planId) && isVerifiedUser() && existing().adminId == request.auth.uid && incoming().adminId == existing().adminId && isValidPlan(incoming());
+      allow delete: if isValidId(planId) && isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+
+    // --- 4. MEMBERS COLLECTION ---
+    match /members/{memberId} {
+      allow get: if isVerifiedUser() && existing().adminId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isValidId(memberId) && (
+        (isVerifiedUser() && incoming().adminId == request.auth.uid && isValidMember(incoming())) ||
+        (incoming().status == 'pending' && isValidMember(incoming()))
+      );
+      allow update: if isValidId(memberId) && isVerifiedUser() && existing().adminId == request.auth.uid && incoming().adminId == existing().adminId && isValidMember(incoming());
+      allow delete: if isValidId(memberId) && isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+
+    // --- 5. SUBSCRIPTIONS COLLECTION ---
+    match /subscriptions/{subscriptionId} {
+      allow get: if isVerifiedUser() && existing().adminId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isValidId(subscriptionId) && (
+        (isVerifiedUser() && incoming().adminId == request.auth.uid && isValidSubscription(incoming())) ||
+        (incoming().status == 'pending' && isValidSubscription(incoming()))
+      );
+      allow update: if isValidId(subscriptionId) && isVerifiedUser() && existing().adminId == request.auth.uid && incoming().adminId == existing().adminId && isValidSubscription(incoming());
+      allow delete: if isValidId(subscriptionId) && isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+
+    // --- 6. PAYMENTS COLLECTION ---
+    match /payments/{paymentId} {
+      allow get: if true;
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isValidId(paymentId) && isValidPayment(incoming());
+      allow update: if isValidId(paymentId) && isVerifiedUser() && existing().adminId == request.auth.uid && isValidPayment(incoming());
+      allow delete: if false;
+    }
+
+    // --- 7. ACCESS TOKENS (ONE-TIME INVITE LINKS) ---
+    match /accessTokens/{tokenId} {
+      allow get: if true; // Public member consumes token once to enter group
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isValidId(tokenId) && isValidAccessToken(incoming());
+      // Allows marking token as consumed (isUsed: true) exactly once
+      allow update: if isValidId(tokenId) && (
+        (existing().isUsed == false && incoming().isUsed == true) ||
+        (isVerifiedUser() && existing().adminId == request.auth.uid)
+      );
+      allow delete: if isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+
+    // --- 8. PROMO CODES ---
+    match /promoCodes/{promoId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isValidId(promoId) && isVerifiedUser() && incoming().adminId == request.auth.uid && isValidPromoCode(incoming());
+      allow update: if isValidId(promoId) && (
+        (isVerifiedUser() && existing().adminId == request.auth.uid && isValidPromoCode(incoming())) ||
+        // Allow public checkout to increment usedCount
+        (incoming().diff(existing()).affectedKeys().hasOnly(['usedCount']))
+      );
+      allow delete: if isValidId(promoId) && isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+
+    // --- 9. REFERRALS (AFFILIATE PROGRAM) ---
+    match /referrals/{referralId} {
+      allow get: if isVerifiedUser() && existing().adminId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isValidId(referralId) && isValidReferral(incoming());
+      allow update: if isVerifiedUser() && existing().adminId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // --- 10. AUDIT LOGS (APPEND-ONLY) ---
+    match /auditLogs/{logId} {
+      allow get: if isVerifiedUser() && existing().adminId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isValidId(logId) && isValidAuditLog(incoming());
+      allow update, delete: if false; // Immutable audit logs
+    }
+
+    // --- 11. WAPAY TRANSACTIONS ---
+    match /wapay_transactions/{txId} {
+      allow get: if true; // Public checkout lookup for client verification
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if true; // Created upon checkout
+      allow update: if (isVerifiedUser() && existing().adminId == request.auth.uid) || true;
+      allow delete: if false;
+    }
+
+    // --- 12. WAPAY PAYOUTS ---
+    match /wapay_payouts/{payoutId} {
+      allow get: if isVerifiedUser() && existing().adminId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create, update: if isVerifiedUser() && (incoming().adminId == request.auth.uid || isBootstrappedAdmin());
+      allow delete: if false;
+    }
+
+    // --- 13. WAPAY BALANCES ---
+    match /wapay_balances/{adminId} {
+      allow get: if isVerifiedUser() && (request.auth.uid == adminId || isBootstrappedAdmin());
+      allow list: if isVerifiedUser() && isBootstrappedAdmin();
+      allow create, update: if isVerifiedUser() && (request.auth.uid == adminId || isBootstrappedAdmin());
+      allow delete: if false;
+    }
+
+    // --- 14. RENEWAL ALERTS ---
+    match /renewal_alerts/{alertId} {
+      allow get, list: if isVerifiedUser() && resource.data.adminId == request.auth.uid;
+      allow create: if isVerifiedUser() && incoming().adminId == request.auth.uid;
+      allow update, delete: if isVerifiedUser() && existing().adminId == request.auth.uid;
+    }
+  }
+}

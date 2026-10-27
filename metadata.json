@@ -1,0 +1,6 @@
+{
+  "name": "WA Monetizer",
+  "description": "Plateforme de gestion et de monétisation d'abonnements pour groupes WhatsApp avec paiements Mobile Money et cartes bancaires en GHS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -45,6 +45,7 @@ import { SettingsView } from './components/SettingsView.tsx';
 import { AuditLogsView } from './components/AuditLogsView.tsx';
 import { MarketingView } from './components/MarketingView.tsx';
 import { AccessLandingView } from './components/AccessLandingView.tsx';
+import { AdminPanelMasterView } from './components/AdminPanelMasterView.tsx';
 import { useLanguage } from './context/LanguageContext.tsx';
 import { 
   ShieldCheck, 
@@ -85,7 +86,28 @@ export default function App() {
   const [members, setMembers] = useState<Member[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // Admin Global Settings State
+  const [adminSettings, setAdminSettings] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('wtm_admin_settings');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+
+  useEffect(() => {
+    fetch('/api/admin/config')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.settings) {
+          setAdminSettings(d.settings);
+          try {
+            localStorage.setItem('wtm_admin_settings', JSON.stringify(d.settings));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Toggle Dark Mode
   useEffect(() => {
@@ -124,6 +146,11 @@ export default function App() {
           gid = new URLSearchParams(hashQuery).get('groupId');
         }
         if (gid) setTargetCheckoutGroupId(gid);
+      }
+
+      // Check for direct admin navigation (#admin or ?tab=admin or ?view=admin)
+      if (currentHash.includes('admin') || urlParams.get('tab') === 'admin' || urlParams.get('view') === 'admin') {
+        setCurrentTab('admin');
       }
     };
 
@@ -339,8 +366,16 @@ export default function App() {
         isSandboxMode={true}
       />
 
+      {/* Dynamic Flash Announcement Banner */}
+      {adminSettings?.announcement?.enabled && (
+        <div className="fixed top-16 left-0 right-0 z-40 bg-emerald-600 text-white text-xs font-bold py-2 px-4 text-center flex items-center justify-center gap-2 shadow-xs transition-all">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+          <span>{adminSettings.announcement.text}</span>
+        </div>
+      )}
+
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full min-w-0 mx-auto px-3.5 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-28 sm:pb-32 overflow-x-hidden">
+      <main className={`flex-1 max-w-7xl w-full min-w-0 mx-auto px-3.5 sm:px-6 lg:px-8 pb-28 sm:pb-32 overflow-x-hidden ${adminSettings?.announcement?.enabled ? 'pt-26 sm:pt-30' : 'pt-20 sm:pt-24'}`}>
         
         {/* If user clicked a single-use token invite link (#access?token=...) */}
         {accessLandingToken ? (
@@ -352,7 +387,7 @@ export default function App() {
               setCurrentTab('dashboard');
             }}
           />
-        ) : !currentUser && currentTab !== 'join' && !isDemoPreviewActive ? (
+        ) : !currentUser && currentTab !== 'join' && currentTab !== 'admin' && !isDemoPreviewActive ? (
           <div className="max-w-2xl mx-auto py-10 px-4">
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8 sm:p-10 shadow-xl text-center space-y-6">
               
@@ -390,7 +425,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-center gap-4 text-xs">
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-center gap-4 text-xs">
                 <button
                   onClick={() => setCurrentTab('join')}
                   className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline flex items-center gap-1.5"
@@ -398,6 +433,16 @@ export default function App() {
                   <Smartphone className="w-4 h-4" />
                   <span>{t('auth.viewPublicPortal', 'Voir la page d\'adhésion membre (Portail Public)')}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
+
+                <button
+                  onClick={() => setCurrentTab('admin')}
+                  className="text-zinc-700 dark:text-zinc-300 font-bold hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>Panneau d'Administration (Réglages)</span>
                 </button>
               </div>
 
@@ -512,6 +557,24 @@ export default function App() {
             {currentTab === 'audit' && (
               <AuditLogsView
                 logs={auditLogs}
+              />
+            )}
+
+            {currentTab === 'admin' && (
+              <AdminPanelMasterView
+                groups={groups}
+                plans={plans}
+                members={members}
+                payments={payments}
+                isSandboxMode={true}
+                onRefreshData={() => {
+                  fetch('/api/admin/config')
+                    .then(r => r.json())
+                    .then(d => {
+                      if (d.success && d.settings) setAdminSettings(d.settings);
+                    })
+                    .catch(() => {});
+                }}
               />
             )}
           </>

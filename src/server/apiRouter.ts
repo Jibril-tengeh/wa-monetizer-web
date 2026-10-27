@@ -657,3 +657,96 @@ apiRouter.post('/admin/check-expirations', (req: Request, res: Response) => {
     message: "Scan des expirations exécuté. Les abonnements expirés ont été synchronisés."
   });
 });
+
+// 11. Unified Admin Control Center Settings API
+export interface AdminGlobalSettings {
+  platformName: string;
+  tagline: string;
+  supportPhone: string;
+  supportEmail: string;
+  announcement: {
+    enabled: boolean;
+    text: string;
+    type: 'info' | 'success' | 'warning';
+  };
+  defaultCurrency: string;
+  activeGatewayMode: 'sandbox' | 'live';
+  platformCommissionPercent: number;
+  splitPaymentEnabled: boolean;
+  subAccountCode: string;
+  linkExpiryHours: number;
+  singleUseStrictDestroy: boolean;
+  blockDeviceSharing: boolean;
+  autoKickExpired: boolean;
+  defaultInviteUrl: string;
+  welcomeMessageTemplate: string;
+  reminderJ3Template: string;
+  reminderJ1Template: string;
+  adminPin: string;
+  requirePinForAdmin: boolean;
+  updatedAt: string;
+}
+
+let globalAdminSettings: AdminGlobalSettings = {
+  platformName: 'WTM - WhatsApp Monetizer',
+  tagline: 'Monétisez vos groupes WhatsApp privés en monnaie locale & mobile money',
+  supportPhone: '+233 24 000 0000',
+  supportEmail: 'sbireino@gmail.com',
+  announcement: {
+    enabled: false,
+    text: 'Profitez de -20% sur tous les abonnements VIP avec le code PROMO20 !',
+    type: 'info'
+  },
+  defaultCurrency: 'GHS',
+  activeGatewayMode: 'sandbox',
+  platformCommissionPercent: 5,
+  splitPaymentEnabled: false,
+  subAccountCode: '',
+  linkExpiryHours: 48,
+  singleUseStrictDestroy: true,
+  blockDeviceSharing: true,
+  autoKickExpired: true,
+  defaultInviteUrl: 'https://chat.whatsapp.com/demo-accra-forex-vip',
+  welcomeMessageTemplate: 'Bonjour {customerName} ! Votre abonnement au groupe "{groupName}" est validé avec succès.\n\n🔐 LIEN D\'ACCÈS UNIQUE :\n{accessUrl}\n\n⚠️ Ce lien s\'autodétruit après 1 clic.',
+  reminderJ3Template: 'Bonjour {memberName} ! Votre abonnement expire dans 3 jours. Renouvelez dès maintenant pour rester dans le groupe VIP.',
+  reminderJ1Template: 'URGENT : Dernier jour avant l\'expiration de votre accès WhatsApp VIP.',
+  adminPin: '1234',
+  requirePinForAdmin: false,
+  updatedAt: new Date().toISOString()
+};
+
+apiRouter.get('/admin/config', (_req: Request, res: Response) => {
+  return res.json({
+    success: true,
+    settings: globalAdminSettings
+  });
+});
+
+apiRouter.post('/admin/config', (req: Request, res: Response) => {
+  const updates = req.body;
+  if (!updates || typeof updates !== 'object') {
+    return res.status(400).json({ error: 'Données de configuration invalides' });
+  }
+
+  globalAdminSettings = {
+    ...globalAdminSettings,
+    ...updates,
+    updatedAt: new Date().toISOString()
+  };
+
+  return res.json({
+    success: true,
+    message: 'Configuration mise à jour avec succès',
+    settings: globalAdminSettings
+  });
+});
+
+apiRouter.post('/admin/verify-pin', (req: Request, res: Response) => {
+  const { pin } = req.body;
+  if (!globalAdminSettings.requirePinForAdmin) {
+    return res.json({ valid: true });
+  }
+  const isValid = String(pin).trim() === String(globalAdminSettings.adminPin).trim();
+  return res.json({ valid: isValid });
+});
+

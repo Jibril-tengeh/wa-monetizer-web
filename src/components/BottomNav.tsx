@@ -26,7 +26,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     { id: 'plans' as ActiveTab, label: t('nav.plans', 'Formules & Tarifs'), icon: Package },
     { id: 'members' as ActiveTab, label: t('nav.members', 'Membres'), icon: Users },
     { id: 'wapay' as ActiveTab, label: t('nav.wapay', 'WA Pay (FinTech)'), icon: CreditCard },
-    { id: 'marketing' as ActiveTab, label: t('nav.marketing', 'Marketing & Outils'), icon: Tag },
+    { id: 'admin' as ActiveTab, label: 'Admin Panel', icon: ShieldCheck },
     { id: 'settings' as ActiveTab, label: t('nav.settings', 'Paramètres'), icon: Settings },
   ];
 

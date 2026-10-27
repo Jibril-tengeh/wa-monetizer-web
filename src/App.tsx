@@ -586,6 +586,7 @@ export default function App() {
       {/* Fixed Bottom Navigation Header with Section Icons */}
       <BottomNav
         currentTab={currentTab}
+        isAdmin={currentUser?.email === 'sbireino@gmail.com'}
         onSelectTab={(tab) => {
           if (tab !== 'join') setTargetCheckoutGroupId(undefined);
           setCurrentTab(tab);

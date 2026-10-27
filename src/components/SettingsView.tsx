@@ -611,8 +611,8 @@ git push -u origin main
               </h3>
               <p className="text-[11px] text-zinc-500">
                 {language === 'en'
-                  ? 'Direct split at source: 98% for admin, 2% WA Pay platform fee.'
-                  : "Ventilation directe à la source : 98% pour l'administrateur, 2% commission plateforme WA Pay."}
+                  ? 'Direct split at source: 98% for admin, 2% SBI Pay platform fee.'
+                  : "Ventilation directe à la source : 98% pour l'administrateur, 2% commission plateforme SBI Pay."}
               </p>
             </div>
           </div>
@@ -626,7 +626,7 @@ git push -u origin main
         </div>
 
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          {t('settings.splitDesc', "Ventilation directe à la source : 98% pour l'administrateur, 2% commission plateforme WA Pay. En renseignant votre code sous-compte Paystack (ACCT_...) ou Hubtel (HUB_SPLIT_...), vous recevez vos fonds directement sans transiter par un compte tiers.")}
+          {t('settings.splitDesc', "Ventilation directe à la source : 98% pour l'administrateur, 2% commission plateforme SBI Pay. En renseignant votre code sous-compte Paystack (ACCT_...) ou Hubtel (HUB_SPLIT_...), vous recevez vos fonds directement sans transiter par un compte tiers.")}
         </p>
 
         <form onSubmit={handleSaveSplit} className="flex flex-col sm:flex-row gap-2">

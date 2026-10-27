@@ -117,7 +117,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ payment, onClose }) 
                 Signature Numérique & QR Vérification
               </div>
               <p className="text-[10px] text-zinc-400 leading-tight">
-                Scannez pour vérifier l'authenticité de la transaction sur le grand livre public WA Pay.
+                Scannez pour vérifier l'authenticité de la transaction sur le grand livre public SBI Pay.
               </p>
             </div>
             {/* Visual simulated SVG QR Code */}
@@ -144,7 +144,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ payment, onClose }) 
           </div>
 
           <div className="text-center text-[10px] text-zinc-400">
-            Reçu électronique certifié conforme par la passerelle de paiement WA Pay.
+            Reçu électronique certifié conforme par la passerelle de paiement SBI Pay.
           </div>
 
         </div>

@@ -209,7 +209,7 @@ export class WaPayEngine {
         checkoutUrl: tx.checkoutUrl,
         promptInstructions: tx.promptInstructions,
         isSandbox: tx.isSandbox,
-        message: "Demande de paiement WA Pay créée avec succès"
+        message: "Demande de paiement SBI Pay créée avec succès"
       };
     } catch (err: any) {
       tx.status = 'failed';
@@ -239,7 +239,7 @@ export class WaPayEngine {
 
     const tx = this.ledger.getByReference(reference);
     if (!tx) {
-      throw new Error(`Transaction WA Pay non trouvée pour la référence: ${reference}`);
+      throw new Error(`Transaction SBI Pay non trouvée pour la référence: ${reference}`);
     }
 
     // If already verified, return cached state with activation details without duplicate debit
@@ -315,7 +315,7 @@ export class WaPayEngine {
       const host = context?.host || 'localhost:3000';
       const oneTimeAccessUrl = `https://${host}/api/access/${tokenRecord.token}`;
 
-      const waInviteMessage = `Bonjour ${tx.customer.name} ! Votre abonnement WA Pay pour le groupe "${groupName}" est validé (${tx.pricing.chargedAmount} ${tx.pricing.chargedCurrency}).\n\n` +
+      const waInviteMessage = `Bonjour ${tx.customer.name} ! Votre abonnement SBI Pay pour le groupe "${groupName}" est validé (${tx.pricing.chargedAmount} ${tx.pricing.chargedCurrency}).\n\n` +
         `🔐 LIEN D'ACCÈS PERSONNEL & UNIQUE (S'autodétruit après 1 clic) :\n${oneTimeAccessUrl}\n\n` +
         `⚠️ Ne partagez jamais ce lien. Dès que vous cliquez une fois, il ne fonctionnera plus.\n\n` +
         `Consignes de l'administrateur : ${instructions}`;
@@ -345,7 +345,7 @@ export class WaPayEngine {
       reference: tx.reference,
       transaction: tx,
       activation: activationData,
-      message: "Paiement WA Pay vérifié et abonnement activé avec succès !"
+      message: "Paiement SBI Pay vérifié et abonnement activé avec succès !"
     };
   }
 

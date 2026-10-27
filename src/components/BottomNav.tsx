@@ -15,9 +15,10 @@ import { useLanguage } from '../context/LanguageContext.tsx';
 interface BottomNavProps {
   currentTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
+  isAdmin?: boolean;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab, isAdmin }) => {
   const { t } = useLanguage();
 
   const navItems = [
@@ -25,8 +26,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
     { id: 'groups' as ActiveTab, label: t('nav.groups', 'Groupes WhatsApp'), icon: MessageCircle },
     { id: 'plans' as ActiveTab, label: t('nav.plans', 'Formules & Tarifs'), icon: Package },
     { id: 'members' as ActiveTab, label: t('nav.members', 'Membres'), icon: Users },
-    { id: 'wapay' as ActiveTab, label: t('nav.wapay', 'WA Pay (FinTech)'), icon: CreditCard },
-    { id: 'admin' as ActiveTab, label: 'Admin Panel', icon: ShieldCheck },
+    { id: 'wapay' as ActiveTab, label: t('nav.wapay', 'SBI Pay (FinTech)'), icon: CreditCard },
+    ...(isAdmin && currentTab !== 'join' ? [{ id: 'admin' as ActiveTab, label: 'Admin Panel', icon: ShieldCheck }] : []),
     { id: 'settings' as ActiveTab, label: t('nav.settings', 'Paramètres'), icon: Settings },
   ];
 

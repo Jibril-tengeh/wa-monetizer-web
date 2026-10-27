@@ -1071,9 +1071,9 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                 <span>
                   {language === 'en' ? (
-                    <>Powered by <strong className="text-zinc-600 dark:text-zinc-300">WA Pay</strong> • Multi-carrier secure African payment rails</>
+                    <>Powered by <strong className="text-zinc-600 dark:text-zinc-300">SBI Pay</strong> • Multi-carrier secure African payment rails</>
                   ) : (
-                    <>Propulsé par <strong className="text-zinc-600 dark:text-zinc-300">WA Pay</strong> • Infrastructure de paiement sécurisée multi-opérateurs</>
+                    <>Propulsé par <strong className="text-zinc-600 dark:text-zinc-300">SBI Pay</strong> • Infrastructure de paiement sécurisée multi-opérateurs</>
                   )}
                 </span>
               </div>

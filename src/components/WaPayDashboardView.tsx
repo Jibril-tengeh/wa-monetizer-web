@@ -148,7 +148,7 @@ export const WaPayDashboardView: React.FC<WaPayDashboardViewProps> = ({ onNaviga
       }
       setFirestoreSynced(true);
       setTimeout(() => setFirestoreSynced(false), 3000);
-      setFeedbackMsg("Grand livre WA Pay synchronisé avec Cloud Firestore !");
+      setFeedbackMsg("Grand livre SBI Pay synchronisé avec Cloud Firestore !");
       setTimeout(() => setFeedbackMsg(null), 4000);
     } catch (err: any) {
       alert(`Erreur de synchronisation Firestore : ${err.message}`);
@@ -327,7 +327,7 @@ export const WaPayDashboardView: React.FC<WaPayDashboardViewProps> = ({ onNaviga
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider border border-emerald-500/40">
-              {language === 'en' ? 'WA Pay • Payment Rails & Payouts' : 'WA Pay • Système de Paiement & Retraits'}
+              {language === 'en' ? 'SBI Pay • Payment Rails & Payouts' : 'SBI Pay • Système de Paiement & Retraits'}
             </span>
             <span className="flex items-center gap-1 text-[11px] text-zinc-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -335,7 +335,7 @@ export const WaPayDashboardView: React.FC<WaPayDashboardViewProps> = ({ onNaviga
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-            <span>{t('wapay.title', 'Moteur Financier WA Pay & Portefeuille Admin')}</span>
+            <span>{t('wapay.title', 'Moteur Financier SBI Pay & Portefeuille Admin')}</span>
           </h1>
           <p className="text-xs text-zinc-300 max-w-xl">
             {t('wapay.subtitle', 'Infrastructure de paiement multi-devises, registre financier auditable et conformité bancaire.')}
@@ -742,7 +742,7 @@ export const WaPayDashboardView: React.FC<WaPayDashboardViewProps> = ({ onNaviga
               {/* Platform Fees */}
               <div className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs">
                 <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400 mb-1.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">Commissions WA Pay</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Commissions SBI Pay</span>
                   <ShieldCheck className="w-4 h-4 text-blue-500" />
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-zinc-100">
@@ -853,7 +853,7 @@ export const WaPayDashboardView: React.FC<WaPayDashboardViewProps> = ({ onNaviga
               <div>
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
-                  <span>Registre Financier des Souscriptions WA Pay</span>
+                  <span>Registre Financier des Souscriptions SBI Pay</span>
                 </h3>
                 <p className="text-xs text-zinc-500">
                   Historique auditable, clés d'idempotence et vérification serveur
@@ -1033,7 +1033,7 @@ export const WaPayDashboardView: React.FC<WaPayDashboardViewProps> = ({ onNaviga
             <div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-emerald-600" />
-                <span>Matrice d'Intégration des Connecteurs WA Pay</span>
+                <span>Matrice d'Intégration des Connecteurs SBI Pay</span>
               </h3>
               <p className="text-xs text-zinc-500">
                 Statuts réels des connexions aux passerelles et exigences contractuelles marchandes

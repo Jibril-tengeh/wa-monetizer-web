@@ -135,20 +135,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Smartphone className="w-5 h-5" />
             </button>
 
-            {/* Master Admin Panel Button */}
-            <button
-              onClick={() => onSelectTab('admin')}
-              title="Panneau d'Administration Général (Réglages)"
-              aria-label="Panneau d'Administration Général (Réglages)"
-              className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
-                currentTab === 'admin'
-                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-md'
-                  : 'text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
-            >
-              <Shield className="w-4 h-4 text-emerald-500" />
-              <span className="hidden sm:inline">Admin</span>
-            </button>
+            {/* Master Admin Panel Button - Only visible when the admin (sbireino@gmail.com) is connected and not on public portal */}
+            {currentUser?.email === 'sbireino@gmail.com' && currentTab !== 'join' && (
+              <button
+                onClick={() => onSelectTab('admin')}
+                title="Panneau d'Administration Général (Réglages)"
+                aria-label="Panneau d'Administration Général (Réglages)"
+                className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  currentTab === 'admin'
+                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-md'
+                    : 'text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <Shield className="w-4 h-4 text-emerald-500" />
+                <span className="hidden sm:inline">Admin</span>
+              </button>
+            )}
 
             {/* Dark Mode Toggle Button */}
             <button

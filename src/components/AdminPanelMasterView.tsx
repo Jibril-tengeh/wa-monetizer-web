@@ -55,7 +55,13 @@ export interface CustomPaymentMethod {
   feePercent: number;
   instructions: string;
   enabled: boolean;
-  providerType?: 'paystack' | 'hubtel' | 'manual' | 'direct';
+  providerType?: 'paystack' | 'hubtel' | 'wave' | 'cinetpay' | 'fedapay' | 'stripe' | 'manual' | 'direct';
+  provider?: 'paystack' | 'hubtel' | 'wave' | 'cinetpay' | 'fedapay' | 'stripe' | 'manual';
+  apiKeyPublic?: string;
+  apiKeySecret?: string;
+  merchantId?: string;
+  webhookSecret?: string;
+  isApiConnected?: boolean;
 }
 
 export interface AdminSettingsData {
@@ -96,7 +102,9 @@ const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
     feePercent: 1.5,
     instructions: 'Passerelle automatique Mobile Money (MTN, Telecel, AirtelTigo)',
     enabled: true,
-    providerType: 'paystack'
+    providerType: 'paystack',
+    provider: 'paystack',
+    isApiConnected: true
   },
   {
     id: 'pm_cards',
@@ -106,7 +114,21 @@ const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
     feePercent: 2.5,
     instructions: 'Paiement carte bancaire sécurisé 3D-Secure',
     enabled: true,
-    providerType: 'paystack'
+    providerType: 'paystack',
+    provider: 'paystack',
+    isApiConnected: true
+  },
+  {
+    id: 'pm_hubtel_ghana',
+    name: 'Hubtel Mobile Money & Card',
+    category: 'mobile_money',
+    countries: 'Ghana (MTN, Telecel, AT, Hubtel)',
+    feePercent: 1.5,
+    instructions: 'Passerelle API Hubtel Ghana avec notification push USSD directe',
+    enabled: true,
+    providerType: 'hubtel',
+    provider: 'hubtel',
+    isApiConnected: true
   },
   {
     id: 'pm_wave_cfa',
@@ -116,7 +138,9 @@ const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
     feePercent: 1.0,
     instructions: 'Paiement direct Wave (QR Code et numéro)',
     enabled: true,
-    providerType: 'direct'
+    providerType: 'direct',
+    provider: 'wave',
+    isApiConnected: true
   },
   {
     id: 'pm_orange_money',
@@ -126,7 +150,8 @@ const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
     feePercent: 1.5,
     instructions: 'Transfert direct Orange Money avec validation automatique',
     enabled: true,
-    providerType: 'direct'
+    providerType: 'direct',
+    provider: 'manual'
   },
   {
     id: 'pm_bank_transfer',
@@ -136,7 +161,8 @@ const DEFAULT_PAYMENT_METHODS: CustomPaymentMethod[] = [
     feePercent: 0,
     instructions: 'Coordonnées bancaires transmises automatiquement',
     enabled: false,
-    providerType: 'manual'
+    providerType: 'manual',
+    provider: 'manual'
   }
 ];
 
@@ -205,6 +231,13 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
   const [newMethodCountries, setNewMethodCountries] = useState('');
   const [newMethodFee, setNewMethodFee] = useState('1.5');
   const [newMethodInstructions, setNewMethodInstructions] = useState('');
+  const [newMethodProvider, setNewMethodProvider] = useState<'paystack' | 'hubtel' | 'wave' | 'cinetpay' | 'fedapay' | 'stripe' | 'manual'>('paystack');
+  const [newMethodApiKeyPublic, setNewMethodApiKeyPublic] = useState('');
+  const [newMethodApiKeySecret, setNewMethodApiKeySecret] = useState('');
+  const [newMethodMerchantId, setNewMethodMerchantId] = useState('');
+  const [newMethodWebhookSecret, setNewMethodWebhookSecret] = useState('');
+  const [testingApi, setTestingApi] = useState(false);
+  const [apiTestResult, setApiTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [methodActionSuccess, setMethodActionSuccess] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
@@ -282,9 +315,40 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
     }
   };
 
+  const handleTestApi = async () => {
+    setTestingApi(true);
+    setApiTestResult(null);
+    try {
+      const res = await fetch('/api/admin/test-provider-api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: newMethodProvider,
+          apiKeyPublic: newMethodApiKeyPublic.trim(),
+          apiKeySecret: newMethodApiKeySecret.trim(),
+          merchantId: newMethodMerchantId.trim()
+        })
+      });
+      const data = await res.json();
+      setApiTestResult({
+        success: !!data.success,
+        message: data.message || (data.success ? 'Connexion API réussie !' : 'Échec du test API')
+      });
+    } catch (err: any) {
+      setApiTestResult({
+        success: false,
+        message: err.message || 'Erreur lors de la communication avec le serveur API'
+      });
+    } finally {
+      setTestingApi(false);
+    }
+  };
+
   const handleAddPaymentMethod = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMethodName.trim()) return;
+
+    const isApiConnected = (newMethodProvider !== 'manual' && (!!newMethodApiKeyPublic.trim() || !!newMethodApiKeySecret.trim() || !!newMethodMerchantId.trim()));
 
     const newMethod: CustomPaymentMethod = {
       id: `pm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -292,9 +356,15 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
       category: newMethodCategory,
       countries: newMethodCountries.trim() || 'Tous pays',
       feePercent: Number(newMethodFee) || 0,
-      instructions: newMethodInstructions.trim() || 'Paiement direct',
+      instructions: newMethodInstructions.trim() || (newMethodProvider !== 'manual' ? `Passerelle automatique API ${newMethodProvider.toUpperCase()}` : 'Paiement direct'),
       enabled: true,
-      providerType: 'direct'
+      providerType: (newMethodProvider === 'paystack' || newMethodProvider === 'hubtel') ? newMethodProvider : 'direct',
+      provider: newMethodProvider,
+      apiKeyPublic: newMethodApiKeyPublic.trim() || undefined,
+      apiKeySecret: newMethodApiKeySecret.trim() || undefined,
+      merchantId: newMethodMerchantId.trim() || undefined,
+      webhookSecret: newMethodWebhookSecret.trim() || undefined,
+      isApiConnected
     };
 
     const currentMethods = settings.paymentMethods || DEFAULT_PAYMENT_METHODS;
@@ -314,6 +384,12 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
     setNewMethodCountries('');
     setNewMethodInstructions('');
     setNewMethodFee('1.5');
+    setNewMethodProvider('paystack');
+    setNewMethodApiKeyPublic('');
+    setNewMethodApiKeySecret('');
+    setNewMethodMerchantId('');
+    setNewMethodWebhookSecret('');
+    setApiTestResult(null);
     setShowAddMethodModal(false);
     setMethodActionSuccess(`Moyen de paiement "${newMethod.name}" ajouté avec succès !`);
     setTimeout(() => setMethodActionSuccess(null), 3500);
@@ -878,6 +954,63 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
 
                   <form onSubmit={handleAddPaymentMethod} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Provider API Selection */}
+                      <div className="sm:col-span-2 p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                        <label className="block text-xs font-black text-emerald-900 dark:text-emerald-200">
+                          Fournisseur / Intégration API de Paiement *
+                        </label>
+                        <select
+                          value={newMethodProvider}
+                          onChange={(e) => {
+                            const val = e.target.value as any;
+                            setNewMethodProvider(val);
+                            if (val === 'hubtel') {
+                              if (!newMethodName) setNewMethodName('Hubtel Mobile Money Ghana');
+                              setNewMethodCategory('mobile_money');
+                              if (!newMethodCountries) setNewMethodCountries('Ghana (MTN, Telecel, AT)');
+                            } else if (val === 'paystack') {
+                              if (!newMethodName) setNewMethodName('Paystack Mobile Money & Card');
+                              setNewMethodCategory('mobile_money');
+                              if (!newMethodCountries) setNewMethodCountries('Ghana, Nigéria, Côte d\'Ivoire');
+                            } else if (val === 'wave') {
+                              if (!newMethodName) setNewMethodName('Wave Mobile Money Direct');
+                              setNewMethodCategory('mobile_money');
+                              if (!newMethodCountries) setNewMethodCountries('Côte d\'Ivoire, Sénégal');
+                            } else if (val === 'cinetpay') {
+                              if (!newMethodName) setNewMethodName('CinetPay UEMOA / CEMAC');
+                              setNewMethodCategory('mobile_money');
+                              if (!newMethodCountries) setNewMethodCountries('Afrique Francophone (UEMOA)');
+                            } else if (val === 'fedapay') {
+                              if (!newMethodName) setNewMethodName('FedaPay Bénin & Togo');
+                              setNewMethodCategory('mobile_money');
+                              if (!newMethodCountries) setNewMethodCountries('Bénin, Togo, Côte d\'Ivoire');
+                            } else if (val === 'stripe') {
+                              if (!newMethodName) setNewMethodName('Stripe International (Visa/Mastercard)');
+                              setNewMethodCategory('card');
+                              if (!newMethodCountries) setNewMethodCountries('International (Monde entier)');
+                            }
+                          }}
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        >
+                          <option value="paystack">⚡ Paystack API (Mobile Money Ghana, Nigeria, CI & Cartes)</option>
+                          <option value="hubtel">🇬🇭 Hubtel API (Mobile Money Ghana : MTN, Telecel, AT, Hubtel Wallet)</option>
+                          <option value="wave">🌊 Wave API (Mobile Money Côte d'Ivoire & Sénégal)</option>
+                          <option value="cinetpay">🌍 CinetPay API (Afrique Francophone : CI, SN, CM, BF, TG, BJ...)</option>
+                          <option value="fedapay">🇧🇯 FedaPay API (Bénin, Togo, Côte d'Ivoire, Niger)</option>
+                          <option value="stripe">💳 Stripe API (Cartes Visa, Mastercard, Apple Pay mondiales)</option>
+                          <option value="manual">📝 Manuel / Sans API (Instructions directes, numéro perso, RIB)</option>
+                        </select>
+                        <p className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                          {newMethodProvider === 'paystack' && "Encaissement automatique instantané via Paystack. Vos clients paient par Mobile Money ou Carte."}
+                          {newMethodProvider === 'hubtel' && "Intégration directe Hubtel Ghana avec notification push USSD automatique sur le mobile du client."}
+                          {newMethodProvider === 'wave' && "Paiement direct Wave avec deep-link et QR code automatique."}
+                          {newMethodProvider === 'cinetpay' && "Passerelle tout-en-un pour les pays de la zone Franc CFA (Orange, Moov, MTN, Wave)."}
+                          {newMethodProvider === 'fedapay' && "Passerelle Mobile Money populaire au Bénin, Togo et Afrique de l'Ouest."}
+                          {newMethodProvider === 'stripe' && "Idéal pour encaisser les membres de la diaspora et les cartes bancaires internationales."}
+                          {newMethodProvider === 'manual' && "Aucune clé API nécessaire. Vos instructions et numéros seront affichés au client."}
+                        </p>
+                      </div>
+
                       <div>
                         <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
                           Nom du Moyen de Paiement *
@@ -887,7 +1020,7 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
                           required
                           value={newMethodName}
                           onChange={(e) => setNewMethodName(e.target.value)}
-                          placeholder="Ex: Moov Money Bénin, Airtel Money Gabon, USDT TRC20..."
+                          placeholder="Ex: Hubtel MoMo, Paystack, Wave..."
                           className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                         />
                       </div>
@@ -917,7 +1050,7 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
                           type="text"
                           value={newMethodCountries}
                           onChange={(e) => setNewMethodCountries(e.target.value)}
-                          placeholder="Ex: Côte d'Ivoire, Bénin, Togo, International..."
+                          placeholder="Ex: Ghana, Côte d'Ivoire, Bénin, International..."
                           className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                         />
                       </div>
@@ -938,15 +1071,95 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
                         />
                       </div>
 
+                      {/* API Credentials Configuration Box if not manual */}
+                      {newMethodProvider !== 'manual' && (
+                        <div className="sm:col-span-2 p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                              <KeyRound className="w-4 h-4 text-emerald-600" />
+                              Identifiants & Clés API ({newMethodProvider.toUpperCase()})
+                            </span>
+                            <span className="text-[10px] text-zinc-500">Sécurisé & chiffré</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
+                                Clé Publique (Public Key / Client ID)
+                              </label>
+                              <input
+                                type="text"
+                                value={newMethodApiKeyPublic}
+                                onChange={(e) => setNewMethodApiKeyPublic(e.target.value)}
+                                placeholder={newMethodProvider === 'paystack' ? 'pk_live_... ou pk_test_...' : 'Client ID ou Clé publique'}
+                                className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-xs font-mono text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
+                                Clé Secrète (Secret Key / Client Secret)
+                              </label>
+                              <input
+                                type="password"
+                                value={newMethodApiKeySecret}
+                                onChange={(e) => setNewMethodApiKeySecret(e.target.value)}
+                                placeholder={newMethodProvider === 'paystack' ? 'sk_live_... ou sk_test_...' : 'Client Secret ou Clé secrète'}
+                                className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-xs font-mono text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                              />
+                            </div>
+
+                            {(newMethodProvider === 'hubtel' || newMethodProvider === 'fedapay' || newMethodProvider === 'cinetpay') && (
+                              <div className="sm:col-span-2">
+                                <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
+                                  {newMethodProvider === 'hubtel' ? 'Numéro de Compte Marchand Hubtel (Merchant Account Number)' : 'Identifiant Marchand / Site ID'}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newMethodMerchantId}
+                                  onChange={(e) => setNewMethodMerchantId(e.target.value)}
+                                  placeholder={newMethodProvider === 'hubtel' ? 'Ex: 2018492' : 'Ex: ID Site ou Marchand'}
+                                  className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-xs font-mono text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Test API Button and feedback */}
+                          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-zinc-200 dark:border-zinc-800">
+                            <button
+                              type="button"
+                              onClick={handleTestApi}
+                              disabled={testingApi}
+                              className="px-3.5 py-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition flex items-center justify-center gap-1.5 self-start"
+                            >
+                              {testingApi ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-emerald-600" />}
+                              <span>{testingApi ? 'Vérification en cours...' : 'Tester la connexion API'}</span>
+                            </button>
+
+                            {apiTestResult && (
+                              <span className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${
+                                apiTestResult.success
+                                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200'
+                                  : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200'
+                              }`}>
+                                {apiTestResult.success ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                                <span>{apiTestResult.message}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                          Instructions d'Encaissement ou Coordonnées (Numéro marchand, compte, QR Code)
+                          Instructions ou Description pour le Client
                         </label>
                         <input
                           type="text"
                           value={newMethodInstructions}
                           onChange={(e) => setNewMethodInstructions(e.target.value)}
-                          placeholder="Ex: Numéro MoMo: +229 00 00 00 00 / Réf client requise"
+                          placeholder="Ex: Passerelle automatique Mobile Money ou numéro direct"
                           className="w-full px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                         />
                       </div>
@@ -1026,6 +1239,44 @@ export const AdminPanelMasterView: React.FC<AdminPanelMasterViewProps> = ({
                               <span className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-white">
                                 {method.name}
                               </span>
+
+                              {/* Provider Badge */}
+                              {method.provider === 'paystack' && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300">
+                                  ⚡ Paystack API
+                                </span>
+                              )}
+                              {method.provider === 'hubtel' && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300">
+                                  🇬🇭 Hubtel API
+                                </span>
+                              )}
+                              {method.provider === 'wave' && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300">
+                                  🌊 Wave API
+                                </span>
+                              )}
+                              {method.provider === 'cinetpay' && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                                  🌍 CinetPay API
+                                </span>
+                              )}
+                              {method.provider === 'fedapay' && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                                  🇧🇯 FedaPay API
+                                </span>
+                              )}
+                              {method.provider === 'stripe' && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                                  💳 Stripe API
+                                </span>
+                              )}
+                              {(method.provider === 'manual' || !method.provider) && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                  📝 Direct / Manuel
+                                </span>
+                              )}
+
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                                 {method.countries || 'Tous pays'}
                               </span>

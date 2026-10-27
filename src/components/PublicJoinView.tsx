@@ -20,7 +20,8 @@ import {
   MapPin,
   ChevronDown,
   Building2,
-  RefreshCw
+  RefreshCw,
+  Wallet
 } from 'lucide-react';
 import { Group, Plan } from '../types/index.ts';
 import { formatMoney, formatGHS } from '../utils/formatters.ts';
@@ -93,6 +94,51 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({
   const [isAutoRenew, setIsAutoRenew] = useState(false);
   // Suggestion 6: STK Push Countdown Timer
   const [countdown, setCountdown] = useState(60);
+
+  // Configured Payment Methods from Admin
+  const [adminPaymentMethods, setAdminPaymentMethods] = useState<Array<{
+    id: string;
+    name: string;
+    category: 'mobile_money' | 'card' | 'bank' | 'crypto' | 'wallet' | 'other';
+    countries: string;
+    feePercent: number;
+    instructions: string;
+    enabled: boolean;
+    provider?: string;
+    providerType?: string;
+    isApiConnected?: boolean;
+  }>>([]);
+  const [selectedCustomMethodId, setSelectedCustomMethodId] = useState<string>('');
+
+  // Load configured payment methods from Admin on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('wtm_admin_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.paymentMethods && Array.isArray(parsed.paymentMethods)) {
+          const enabledMethods = parsed.paymentMethods.filter((m: any) => m.enabled !== false);
+          if (enabledMethods.length > 0) {
+            setAdminPaymentMethods(enabledMethods);
+            setSelectedCustomMethodId(enabledMethods[0].id);
+          }
+        }
+      }
+    } catch {}
+
+    fetch('/api/admin/config')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.settings?.paymentMethods) {
+          const enabledMethods = data.settings.paymentMethods.filter((m: any) => m.enabled !== false);
+          if (enabledMethods.length > 0) {
+            setAdminPaymentMethods(enabledMethods);
+            setSelectedCustomMethodId(prev => prev || enabledMethods[0].id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Automatic Geo & Currency Detection on Mount
   useEffect(() => {
@@ -288,6 +334,11 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({
     setIsSubmitting(true);
 
     try {
+      const chosenMethod = adminPaymentMethods.find(m => m.id === selectedCustomMethodId);
+      const resolvedProvider = isSandboxMode 
+        ? 'sandbox' 
+        : (chosenMethod?.provider || chosenMethod?.providerType || 'paystack');
+
       const response = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -305,7 +356,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({
           customerEmail: customerEmail.trim() || undefined,
           channel: paymentChannel,
           momoNetwork: paymentChannel === 'mobile_money' ? momoNetwork : undefined,
-          provider: isSandboxMode ? 'sandbox' : 'paystack',
+          provider: resolvedProvider,
           isRecurring: isAutoRenew,
           recurringInterval: 'monthly',
           callbackUrl: window.location.href
@@ -875,65 +926,161 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({
 
             {/* 3. Payment Method */}
             <div className="space-y-3 pt-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                {t('checkout.step3', '3. Moyen de paiement :')}
-              </label>
-
-              <div className="grid grid-cols-2 gap-3">
-                {activeCurrencyConfig.paymentChannels.includes('mobile_money') && (
-                  <button
-                    type="button"
-                    onClick={() => setPaymentChannel('mobile_money')}
-                    className={`p-3 rounded-xl border-2 text-left flex items-center gap-2.5 transition-all ${
-                      paymentChannel === 'mobile_money'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
-                    }`}
-                  >
-                    <Smartphone className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div>
-                      <div className="font-bold text-xs">Mobile Money</div>
-                      <div className="text-[10px] text-zinc-500">
-                        {activeCurrencyConfig.momoProviders?.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ') || 'MoMo Local'}
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentChannel('card')}
-                  className={`p-3 rounded-xl border-2 text-left flex items-center gap-2.5 transition-all ${
-                    paymentChannel === 'card'
-                      ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
-                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div>
-                    <div className="font-bold text-xs">{language === 'en' ? 'Credit / Debit Card' : 'Carte Bancaire'}</div>
-                    <div className="text-[10px] text-zinc-500">Visa / Mastercard</div>
-                  </div>
-                </button>
-
-                {activeCurrencyConfig.paymentChannels.includes('bank') && (
-                  <button
-                    type="button"
-                    onClick={() => setPaymentChannel('bank')}
-                    className={`col-span-2 p-3 rounded-xl border-2 text-left flex items-center gap-2.5 transition-all ${
-                      paymentChannel === 'bank'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
-                    }`}
-                  >
-                    <Building2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div>
-                      <div className="font-bold text-xs">{language === 'en' ? 'Bank Transfer / USSD' : 'Virement Bancaire / USSD'}</div>
-                      <div className="text-[10px] text-zinc-500">{language === 'en' ? 'Local banks & virtual accounts' : 'Banques locales & comptes virtuels'}</div>
-                    </div>
-                  </button>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  {t('checkout.step3', '3. Moyen de paiement :')}
+                </label>
+                {adminPaymentMethods.length > 0 && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    Passerelles Certifiées
+                  </span>
                 )}
               </div>
+
+              {adminPaymentMethods.length > 0 ? (
+                /* Dynamic Admin Configured Payment Methods */
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {adminPaymentMethods.map((method) => {
+                      const isSelected = selectedCustomMethodId === method.id;
+                      const isMobileMoney = method.category === 'mobile_money';
+                      const isCard = method.category === 'card';
+                      const isBank = method.category === 'bank';
+
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCustomMethodId(method.id);
+                            if (isCard) setPaymentChannel('card');
+                            else if (isBank) setPaymentChannel('bank');
+                            else setPaymentChannel('mobile_money');
+                          }}
+                          className={`p-3 rounded-xl border-2 text-left flex items-start gap-2.5 transition-all ${
+                            isSelected
+                              ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 shadow-sm'
+                              : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                            isSelected 
+                              ? 'bg-emerald-600 text-white' 
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                          }`}>
+                            {isMobileMoney && <Smartphone className="w-4 h-4" />}
+                            {isCard && <CreditCard className="w-4 h-4" />}
+                            {isBank && <Building2 className="w-4 h-4" />}
+                            {!isMobileMoney && !isCard && !isBank && <Wallet className="w-4 h-4" />}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                              <span className="font-bold text-xs leading-tight">
+                                {method.name}
+                              </span>
+
+                              {/* Provider Badge */}
+                              {method.provider === 'paystack' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
+                                  ⚡ Paystack
+                                </span>
+                              )}
+                              {method.provider === 'hubtel' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
+                                  🇬🇭 Hubtel
+                                </span>
+                              )}
+                              {method.provider === 'wave' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300">
+                                  🌊 Wave
+                                </span>
+                              )}
+                              {method.provider === 'cinetpay' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                                  🌍 CinetPay
+                                </span>
+                              )}
+                              {method.provider === 'fedapay' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                  🇧🇯 FedaPay
+                                </span>
+                              )}
+                              {method.provider === 'stripe' && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                                  💳 Stripe
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="text-[10px] text-zinc-500 truncate">
+                              {method.instructions || method.countries || 'Paiement instantané'}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                /* Fallback default channels */
+                <div className="grid grid-cols-2 gap-3">
+                  {activeCurrencyConfig.paymentChannels.includes('mobile_money') && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentChannel('mobile_money')}
+                      className={`p-3 rounded-xl border-2 text-left flex items-center gap-2.5 transition-all ${
+                        paymentChannel === 'mobile_money'
+                          ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
+                          : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                      }`}
+                    >
+                      <Smartphone className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs">Mobile Money</div>
+                        <div className="text-[10px] text-zinc-500">
+                          {activeCurrencyConfig.momoProviders?.slice(0, 2).map(p => p.name.split(' ')[0]).join(' / ') || 'MoMo Local'}
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentChannel('card')}
+                    className={`p-3 rounded-xl border-2 text-left flex items-center gap-2.5 transition-all ${
+                      paymentChannel === 'card'
+                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
+                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    <CreditCard className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="font-bold text-xs">{language === 'en' ? 'Credit / Debit Card' : 'Carte Bancaire'}</div>
+                      <div className="text-[10px] text-zinc-500">Visa / Mastercard</div>
+                    </div>
+                  </button>
+
+                  {activeCurrencyConfig.paymentChannels.includes('bank') && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentChannel('bank')}
+                      className={`col-span-2 p-3 rounded-xl border-2 text-left flex items-center gap-2.5 transition-all ${
+                        paymentChannel === 'bank'
+                          ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
+                          : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                      }`}
+                    >
+                      <Building2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <div>
+                        <div className="font-bold text-xs">{language === 'en' ? 'Bank Transfer / USSD' : 'Virement Bancaire / USSD'}</div>
+                        <div className="text-[10px] text-zinc-500">{language === 'en' ? 'Local banks & virtual accounts' : 'Banques locales & comptes virtuels'}</div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Mobile Money Network Choice */}
               {paymentChannel === 'mobile_money' && activeCurrencyConfig.momoProviders && activeCurrencyConfig.momoProviders.length > 0 && (

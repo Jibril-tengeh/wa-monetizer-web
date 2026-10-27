@@ -13,3 +13,4 @@ public/assets/
 *.png
 *.zip
 backend/
+.vercel
